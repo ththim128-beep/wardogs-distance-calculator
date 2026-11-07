@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>워독스 좌표 거리 계산기</title>
+  <style>
+    :root { --bg:#f2f5fa; --surface:#ffffff; --ink:#14213d; --muted:#64748b; --border:#dbe4ee; --navy:#172f50; --blue:#1765c1; --blue-soft:#e7f0fd; --accent:#ef8d39; --danger:#b42318; --green:#237b51; }
+    * { box-sizing:border-box }
+    body { margin:0; background:linear-gradient(145deg,#eaf0f9 0%,#f7f9fc 60%,#eef4fa 100%); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Pretendard","Noto Sans KR","Malgun Gothic",sans-serif; min-height:100vh; }
+    .wrap { max-width:950px; margin:auto; padding:44px 22px 70px; }
+    .eyebrow { letter-spacing:.14em; font-weight:800; font-size:12px; color:#4074aa; }
+    h1 { margin:7px 0 9px; letter-spacing:-.055em; font-size:clamp(29px,5vw,42px); line-height:1.15; }
+    .subtitle { color:var(--muted); font-size:15px; line-height:1.7; margin:0 0 26px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:23px; box-shadow:0 9px 32px rgba(22,44,77,.045); }
+    .card h2 { font-size:17px; margin:0 0 17px; letter-spacing:-.025em; display:flex; gap:9px; align-items:center; }
+    .point { width:12px; height:12px; display:inline-block; border-radius:50%; background:var(--blue); box-shadow:0 0 0 4px var(--blue-soft); }
+    .point.orange { background:var(--accent); box-shadow:0 0 0 4px #fff0dd; }
+    .fieldrow { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .game-coordinate { width:100%; font-size:19px; letter-spacing:0.01em; }
+    .fieldhelp { font-size:12px; color:var(--muted); margin-top:9px; }
+    .example { background:#e7f0fd; color:#17548d; border-radius:6px; padding:2px 6px; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
+    label { font-weight:700; color:#43546c; font-size:13px; display:block; margin:0 0 8px; }
+    input { width:100%; min-width:0; padding:13px 13px; border:1px solid #cfd9e6; background:#fbfcff; border-radius:11px; color:var(--ink); font-size:18px; font-variant-numeric:tabular-nums; font-family:inherit; outline:0; transition:box-shadow .15s,border .15s; }
+    input:focus { border-color:#2078ce; box-shadow:0 0 0 3px #ddeeff; background:white; }
+    input[aria-invalid="true"] { border-color:#d92d20; background:#fff7f7; }
+    .scale { margin-top:16px; display:flex; align-items:end; gap:14px; justify-content:space-between; }
+    .scale .scale-input { flex:0 1 220px; }
+    .scale small { color:var(--muted); line-height:1.5; display:block; padding-bottom:5px; }
+    .actionrow { display:flex; flex-wrap:wrap; gap:9px; margin-top:17px; }
+    button { font-family:inherit; border:1px solid var(--border); background:white; color:var(--navy); font-weight:750; border-radius:10px; padding:11px 15px; cursor:pointer; font-size:13px; }
+    button:hover { background:#f1f5fb; }
+    button:focus-visible { outline:3px solid #6fb1ff; outline-offset:2px; }
+    button.primary { color:white; border-color:var(--blue); background:var(--blue); }
+    button.primary:hover { background:#0c52a6; }
+    .result { margin-top:17px; background:var(--navy); color:#fff; border-radius:21px; padding:27px 29px; box-shadow:0 12px 26px rgba(15,35,65,.15); }
+    .result-header { color:#c8d8ee; font-size:14px; font-weight:700; }
+    .number { display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; margin-top:8px; }
+    #distance { font-size:clamp(38px,8vw,62px); line-height:1.1; letter-spacing:-.055em; font-weight:850; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+    .unit { font-size:23px; color:#c6d9f3; font-weight:700; }
+    #distanceKm { margin-top:10px; font-size:16px; color:#d9e9ff; font-variant-numeric:tabular-nums; }
+    .metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:18px; }
+    .metric { background:#f8fafd; border:1px solid var(--border); border-radius:13px; padding:16px; }
+    .metric .name { font-size:12px; color:#67768d; margin-bottom:7px; }
+    .metric .value { font-size:18px; font-weight:800; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+    .viz { margin-top:18px; background:white; border:1px solid var(--border); border-radius:20px; padding:20px 22px 12px; }
+    .viz h2 { font-size:16px; margin:0 0 4px; }
+    .viz .hint { color:var(--muted); font-size:12px; line-height:1.6; }
+    svg { width:100%; display:block; height:auto; max-height:310px; margin-top:4px; }
+    .note { font-size:12px; line-height:1.75; color:#62718a; padding:17px 3px 0; }
+    .status { font-size:13px; color:var(--danger); min-height:20px; margin-top:8px; }
+    #toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:#132a44; color:white; padding:11px 16px; border-radius:12px; font-size:13px; box-shadow:0 8px 24px #142a4455; opacity:0; transition:opacity .2s; pointer-events:none; }
+    #toast.show { opacity:1; }
+    @media(max-width:600px) { .wrap { padding:28px 15px 46px; } .grid { grid-template-columns:1fr; gap:12px; } .card { padding:19px; } .metrics { gap:7px; } .metric { padding:12px 9px; } .metric .value { font-size:15px; } .scale { align-items:stretch; flex-direction:column; gap:4px; } .scale .scale-input { flex:auto; } .result { padding:22px; } }
+    body { background:var(--body-gradient,linear-gradient(145deg,#eaf0f9 0%,#f7f9fc 60%,#eef4fa 100%)); }
+    html[data-theme="dark"] { --bg:#0F1623; --surface:#1B2737; --ink:#EAF2FC; --muted:#ACBDD3; --border:#34465C; --navy:#183958; --blue:#5CA5FF; --blue-soft:#203F65; --accent:#FFA75C; --danger:#FF978F; --green:#7ADEA2; --body-gradient:linear-gradient(145deg,#0C1522,#131E2D 60%,#101A29); color-scheme:dark; }
+    html[data-theme="dark"] .eyebrow { color:#88BBF7; }
+    html[data-theme="dark"] .card, html[data-theme="dark"] .viz { background:var(--surface); }
+    html[data-theme="dark"] label { color:#CAD8EB; }
+    html[data-theme="dark"] input { background:#101B2A; border-color:#3E5066; color:#F0F6FF; }
+    html[data-theme="dark"] input:focus { background:#182940; box-shadow:0 0 0 3px #27588A; }
+    html[data-theme="dark"] input[aria-invalid="true"] { background:#3D242D; }
+    html[data-theme="dark"] button { background:#293A50; border-color:#42526B; color:#EAF2FC; }
+    html[data-theme="dark"] button:hover { background:#344962; }
+    html[data-theme="dark"] button.primary { background:#2784DA; color:#FFF; }
+    html[data-theme="dark"] .metric { background:#1B2737; }
+    html[data-theme="dark"] .metric .name, html[data-theme="dark"] .note { color:#B8C8DD; }
+    html[data-theme="dark"] .example { background:#244A6F; color:#B6D8FF; }
+    html[data-theme="dark"] #diagram-bg { fill:#121F30; stroke:#385067; }
+    html[data-theme="dark"] #diagram-grid path { stroke:#314257; }
+    html[data-theme="dark"] .point.orange {box-shadow:0 0 0 4px #54402B;}
+    .header-row { display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:12px; }
+    .header-row h1 { margin-top:7px; }
+    .theme-btn { margin-top:3px; white-space:nowrap; }
+    .auto-note { padding:12px 15px; border:1px solid var(--border); background:var(--surface); border-radius:12px; margin-bottom:17px; font-size:13px; color:var(--muted); line-height:1.7; }
+    .paste-row {display:flex; gap:8px; flex-wrap:wrap; margin-bottom:17px;}
+    .paste-row button {font-size:12px;}
+    #targetTip {display:inline-flex;align-items:center;color:var(--muted);font-size:12px;}
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <div class="eyebrow">WARDOGS · COORDINATE TOOL</div>
+  <div class="header-row"><h1>좌표 거리 계산기</h1><button class="theme-btn" id="themeToggle" type="button">☾ 다크모드</button></div>
+  <p class="subtitle">게임에 표시된 좌표를 <strong>x101.08, y65.23</strong> 형식 그대로 붙여 넣으면 직선거리를 즉시 계산합니다.</p>
+  <div class="auto-note"><strong>게임 화면에서 Ctrl+C로 자동 수신하려면 Windows 실행 버전을 이용하세요.</strong> 브라우저 보안상 다른 프로그램이 활성화된 동안 클립보드를 자동 감시할 수 없습니다. 이 웹 버전에서는 복사한 좌표를 아래 버튼으로 가져오거나 입력칸에 붙여 넣으세요.</div>
+  <div class="paste-row"><button id="pasteFromClipboard" type="button">클립보드에서 좌표 읽기</button><button id="toggleTarget" type="button">입력 대상 변경</button><span id="targetTip">다음 입력: A</span></div>
+  <section class="grid" aria-label="좌표 입력">
+    <div class="card">
+      <h2><span class="point"></span> 출발 좌표 A</h2>
+      <label for="coordA">게임 좌표 입력</label>
+      <input id="coordA" class="game-coordinate" type="text" value="x101.08, y65.23" placeholder="x101.08, y65.23" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="helpA">
+      <div class="fieldhelp" id="helpA">예시: <span class="example">x101.08, y65.23</span></div>
+    </div>
+    <div class="card">
+      <h2><span class="point orange"></span> 도착 좌표 B</h2>
+      <label for="coordB">게임 좌표 입력</label>
+      <input id="coordB" class="game-coordinate" type="text" value="x104.08, y69.23" placeholder="x104.08, y69.23" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="helpB">
+      <div class="fieldhelp" id="helpB">X·Y를 한 번에 붙여 넣거나 직접 입력하세요.</div>
+    </div>
+  </section>
+  <div class="card" style="margin-top:16px">
+    <div class="scale">
+      <div class="scale-input"><label for="scale">좌표 1단위의 실제 거리 (m)</label><input type="number" id="scale" min="0.000001" step="any" value="100" aria-describedby="scale-note"></div>
+      <small id="scale-note">100m는 임시 환산값입니다.<br>게임의 실제 좌표 단위를 확인해 변경하세요.</small>
+    </div>
+    <div class="actionrow">
+      <button id="swap" type="button">↔ A·B 좌표 교환</button>
+      <button id="reset" type="button">↺ 초기화</button>
+      <button id="copy" type="button" class="primary">⧉ 계산 결과 복사</button>
+    </div>
+    <div class="status" role="alert" id="error"></div>
+  </div>
+  <section class="result" aria-live="polite" aria-label="계산 결과">
+    <div class="result-header">두 좌표 사이 직선거리</div>
+    <div class="number"><span id="distance">500</span> <span class="unit">m</span></div>
+    <div id="distanceKm">0.5 km</div>
+  </section>
+  <div class="metrics" aria-label="세부 계산값">
+    <div class="metric"><div class="name">X 차이 (절댓값)</div><div class="value" id="dx">3</div></div>
+    <div class="metric"><div class="name">Y 차이 (절댓값)</div><div class="value" id="dy">4</div></div>
+    <div class="metric"><div class="name">좌표상 직선거리</div><div class="value" id="coordDistance">5</div></div>
+  </div>
+  <section class="viz" aria-label="좌표 관계도">
+    <h2>좌표 관계도</h2>
+    <div class="hint">실제 지도가 아닌 두 좌표의 상대적 위치를 나타낸 도식입니다.</div>
+    <svg viewBox="0 0 670 245" role="img" aria-label="좌표 A와 B의 상대적 위치를 나타낸 그래프">
+      <defs><pattern id="diagram-grid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M 25 0 L 0 0 0 25" fill="none" stroke="#e6edf5" stroke-width="1"/></pattern></defs>
+      <rect id="diagram-bg" x="22" y="15" width="626" height="212" rx="12" fill="#f9fbfe" stroke="#e3eaf2"/>
+      <rect x="22" y="15" width="626" height="212" rx="12" fill="url(#diagram-grid)"/>
+      <line id="path" x1="180" y1="90" x2="490" y2="165" stroke="#4265a0" stroke-width="3.2" stroke-dasharray="8 6" stroke-linecap="round"/>
+      <circle id="dotA" cx="180" cy="90" r="8" fill="#1765c1" stroke="white" stroke-width="3"/>
+      <circle id="dotB" cx="490" cy="165" r="8" fill="#ef8d39" stroke="white" stroke-width="3"/>
+      <text id="textA" x="180" y="70" fill="#13509a" font-weight="800" font-size="13" text-anchor="middle">A</text>
+      <text id="textB" x="490" y="145" fill="#b25c16" font-weight="800" font-size="13" text-anchor="middle">B</text>
+    </svg>
+  </section>
+  <p class="note">입력 예: x101.08, y65.23. 계산식: √[(X₂ − X₁)² + (Y₂ − Y₁)²] × 환산 배율. 고도 차이는 고려하지 않으며, 결과는 도로·이동 경로가 아닌 두 점 사이의 평면 직선거리입니다. 입력값은 외부 서버로 전송되지 않습니다.</p>
+</main>
+<div id="toast" role="status"></div>
+<script>
+(()=>{
+  'use strict';
+  const ids=['coordA','coordB','scale'];
+  const extra=['distance','distanceKm','dx','dy','coordDistance','error','swap','reset','copy','path','dotA','dotB','textA','textB','toast','themeToggle','pasteFromClipboard','toggleTarget','targetTip'];
+  const el=Object.fromEntries([...ids,...extra].map(id=>[id,document.getElementById(id)]));
+  const fmt=(n,d=4)=>new Intl.NumberFormat('ko-KR',{maximumFractionDigits:d}).format(n);
+  const numeric=String.raw`([+-]?(?:\d+(?:\.\d*)?|\.\d+))`;
+  const labeled=new RegExp(String.raw`^\s*x\s*[:=]?\s*`+numeric+String.raw`\s*[,;\s]+\s*y\s*[:=]?\s*`+numeric+String.raw`\s*$`,'i');
+  const plain=new RegExp(String.raw`^\s*`+numeric+String.raw`\s*[,;\s]+\s*`+numeric+String.raw`\s*$`);
+  function parseCoordinate(raw){
+    const match=raw.match(labeled)||raw.match(plain);
+    if(!match)return null;
+    const x=Number(match[1]),y=Number(match[2]);
+    return Number.isFinite(x)&&Number.isFinite(y)?{x,y}:null;
+  }
+  const value=id=>el[id].value.trim();
+  let last=null;
+  let toastTimer;
+  function showToast(message){el.toast.textContent=message;el.toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.toast.classList.remove('show'),2200);}
+  function updateDiagram(a,b,c,d){
+    let xlo=Math.min(a,c),xhi=Math.max(a,c),ylo=Math.min(b,d),yhi=Math.max(b,d);
+    let w=xhi-xlo,h=yhi-ylo;
+    const largest=Math.max(w,h,1e-9);w=Math.max(w,largest*.24);h=Math.max(h,largest*.24);
+    const xmid=(xlo+xhi)/2,ymid=(ylo+yhi)/2;
+    xlo=xmid-w/2; ylo=ymid-h/2;
+    const xy=(x,y)=>[78+(x-xlo)/w*514,195-(y-ylo)/h*150];
+    const [ax,ay]=xy(a,b),[bx,by]=xy(c,d);
+    el.path.setAttribute('x1',ax);el.path.setAttribute('y1',ay);el.path.setAttribute('x2',bx);el.path.setAttribute('y2',by);
+    [['dotA',ax,ay],['dotB',bx,by]].forEach(([id,x,y])=>{el[id].setAttribute('cx',x);el[id].setAttribute('cy',y);});
+    const same=Math.hypot(ax-bx,ay-by)<18;
+    [['textA',ax,ay,-18],['textB',bx,by,same?24:-18]].forEach(([id,x,y,offset])=>{
+      el[id].setAttribute('x',x);el[id].setAttribute('y',y+offset);
+    });
+  }
+  function update(){
+    const A=parseCoordinate(value('coordA'));
+    const B=parseCoordinate(value('coordB'));
+    const s=value('scale')!==''?Number(value('scale')):NaN;
+    el.coordA.setAttribute('aria-invalid',String(!A));
+    el.coordB.setAttribute('aria-invalid',String(!B));
+    el.scale.setAttribute('aria-invalid',String(!Number.isFinite(s)||s<=0));
+    if(!A||!B||!Number.isFinite(s)||s<=0){
+      last=null;
+      el.error.textContent=(!A||!B)?'좌표를 x101.08, y65.23 형식으로 입력하세요.':'환산 배율을 0보다 큰 숫자로 입력하세요.';
+      el.distance.textContent='—';el.distanceKm.textContent='계산할 수 없습니다';
+      ['dx','dy','coordDistance'].forEach(id=>el[id].textContent='—');
+      el.path.setAttribute('opacity','0');['dotA','dotB','textA','textB'].forEach(id=>el[id].setAttribute('opacity','0'));
+      return;
+    }
+    el.error.textContent='';
+    el.path.setAttribute('opacity','1');['dotA','dotB','textA','textB'].forEach(id=>el[id].setAttribute('opacity','1'));
+    const {x:a,y:b}=A, {x:c,y:d}=B;
+    const dx=Math.abs(c-a),dy=Math.abs(d-b),u=Math.hypot(c-a,d-b),m=u*s;
+    last={A,B,s,dx,dy,u,m};
+    el.distance.textContent=fmt(m,3);el.distanceKm.textContent=`${fmt(m/1000,6)} km`;
+    el.dx.textContent=fmt(dx,5);el.dy.textContent=fmt(dy,5);el.coordDistance.textContent=fmt(u,5);
+    updateDiagram(a,b,c,d);
+  }
+  ids.forEach(id=>el[id].addEventListener('input',update));
+  el.swap.addEventListener('click',()=>{
+    const v=el.coordA.value;el.coordA.value=el.coordB.value;el.coordB.value=v;
+    update();
+  });
+  el.reset.addEventListener('click',()=>{
+    Object.entries({coordA:'x101.08, y65.23',coordB:'x104.08, y69.23',scale:'100'}).forEach(([k,v])=>el[k].value=v);
+    update();showToast('예시 좌표로 초기화했습니다.');
+  });
+  el.copy.addEventListener('click',async()=>{
+    if(!last){showToast('유효한 좌표를 먼저 입력하세요.');return;}
+    const {A,B,s,m}=last;
+    const str=`워독스 좌표 거리 계산\nA (x${A.x}, y${A.y}) → B (x${B.x}, y${B.y})\n좌표 1단위 = ${s} m\n직선거리: ${fmt(m,3)} m (${fmt(m/1000,6)} km)`;
+    try{
+      if(navigator.clipboard&&window.isSecureContext) await navigator.clipboard.writeText(str);
+      else {const t=document.createElement('textarea');t.value=str;t.setAttribute('readonly','');t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();const ok=document.execCommand('copy');t.remove();if(!ok)throw new Error('copy failure');}
+      showToast('계산 결과를 복사했습니다.');
+    }catch(e){showToast('복사가 제한되었습니다. 결과를 선택하여 복사하세요.');}
+  });
+  let nextPasteTarget='A';
+  const themeKey='wardogs-distance-theme';
+  let storedTheme='';
+  try { storedTheme=localStorage.getItem(themeKey)||''; } catch(e) {}
+  function applyTheme(theme){
+    document.documentElement.setAttribute('data-theme',theme);
+    el.themeToggle.textContent=theme==='dark'?'☀ 라이트모드':'☾ 다크모드';
+    try {localStorage.setItem(themeKey,theme);}catch(e){}
+  }
+  applyTheme(storedTheme==='light'?'light':'dark');
+  el.themeToggle.addEventListener('click',()=>applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'));
+  function insertClipboardCoordinate(raw){
+    const point=parseCoordinate(raw.trim());
+    if(!point){showToast('x101.08, y65.23 형식의 좌표가 아닙니다.');return false;}
+    const target=nextPasteTarget;
+    el[target==='A'?'coordA':'coordB'].value=`x${point.x}, y${point.y}`;
+    nextPasteTarget=target==='A'?'B':'A';
+    el.targetTip.textContent=`다음 입력: ${nextPasteTarget}`;
+    update();showToast(`${target} 좌표를 입력했습니다.`);return true;
+  }
+  el.toggleTarget.addEventListener('click',()=>{nextPasteTarget=nextPasteTarget==='A'?'B':'A';el.targetTip.textContent=`다음 입력: ${nextPasteTarget}`;});
+  el.pasteFromClipboard.addEventListener('click',async()=>{
+    try{
+      if(!navigator.clipboard?.readText) throw new Error('Clipboard API unavailable');
+      const raw=await navigator.clipboard.readText();
+      insertClipboardCoordinate(raw);
+    }catch(e){showToast('클립보드 읽기가 차단되었습니다. 좌표 입력칸에 Ctrl+V로 붙여 넣으세요.');}
+  });
+  document.addEventListener('paste',e=>{
+    if(e.target.closest('input'))return;
+    const text=e.clipboardData?.getData('text/plain')||'';
+    if(parseCoordinate(text)){e.preventDefault();insertClipboardCoordinate(text);}
+  });
+  update();
+})();
+</script>
+</body>
+</html>
